@@ -23,7 +23,6 @@ public class TempController {
         model.addAttribute("firstName", userData.get("first_name"));
         model.addAttribute("lastName", userData.get("last_name"));
         model.addAttribute("username", userData.get("username"));
-        model.addAttribute("photoUrl", userData.get("photo_url"));
 
         return "profile";
     }
