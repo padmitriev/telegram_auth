@@ -23,7 +23,7 @@ public class WebAppController {
     public ResponseEntity<?> handleWebApp(
             HttpServletRequest request,
             @RequestParam(name = "initData", required = false) String initData,
-            @RequestParam(name = "redirected", required = false) String redirected) {
+            @RequestParam(name = "redirected", required = false) String redirected) throws Exception {
 
         if (initData == null) {
             if ("true".equals(redirected)) {
@@ -32,20 +32,21 @@ public class WebAppController {
             return getInitPage();
         }
 
-        System.out.println("Данные из Telegram:");
-        System.out.println("initData = " + initData);
-
         if (!authService.validateInitData(initData)) {
-            if ("true".equals(redirected)) {
-                return showAuthError();
-            }
-            return getInitPage();
+            System.err.println("Подпись неверна");
+            return showAuthError();
         }
 
         TelegramUser user = authService.parseUserData(initData);
-        System.out.println("Распарсенный пользователь: " + user);
+        if (user == null) {
+            System.err.println("Не удалось распарсить пользователя");
+            return getInitPage();
+        }
 
-        return ResponseEntity.ok().body(generateUserPage(user));
+        System.out.println("Подпись верна");
+        System.out.println("Пользователь: " + user.getFirstName() + " " + user.getLastName());
+
+        return ResponseEntity.ok(generateUserPage(user));
     }
 
     private ResponseEntity<String> showAuthError() {
