@@ -9,5 +9,4 @@ public class TlgrmApplication {
     public static void main(String[] args) {
         SpringApplication.run(TlgrmApplication.class, args);
     }
-
 }
