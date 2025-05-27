@@ -9,7 +9,7 @@ BOT_USERNAME=ваш_бот
 WEB_APP_URL=ваш_url
 
 Эти параметры указаны в application.properties:
-telegram.bot.token=${BOT_TOKEN}
+telegram.bot.token=${BOT_TOKEN}\n
 telegram.bot.username=${BOT_USERNAME}
 telegram.bot.web-app-url=${WEB_APP_URL}
 
