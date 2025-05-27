@@ -1,4 +1,4 @@
-Jтображение валидированных данных пользователя Telegram через Mini App
+Отображение валидированных данных пользователя Telegram через Mini App
 
 spring.application.name=tlgrm
 server.port=8082
