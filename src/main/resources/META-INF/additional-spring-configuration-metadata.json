@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "telegram.bot.token",
+      "type": "java.lang.String",
+      "description": "Telegram bot token."
+    },
+    {
+      "name": "telegram.bot.username",
+      "type": "java.lang.String",
+      "description": "Telegram bot username."
+    },
+    {
+      "name": "telegram.bot.web-app-url",
+      "type": "java.lang.String",
+      "description": "URL for Telegram WebApp."
+    }
+  ]
+}

@@ -2,17 +2,21 @@ package dpa.testwork.tlgrm.controller;
 
 import dpa.testwork.tlgrm.process_user.WebAppDataService;
 import dpa.testwork.tlgrm.process_user.dto.TelegramUser;
-import jakarta.servlet.http.HttpServletRequest;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
-@RestController
+@Controller
+@Slf4j
 @RequestMapping("/")
 @RequiredArgsConstructor
 public class WebAppController {
@@ -20,101 +24,41 @@ public class WebAppController {
     private final WebAppDataService authService;
 
     @GetMapping
-    public ResponseEntity<?> handleWebApp(
-            HttpServletRequest request,
+    public String handleWebApp(
             @RequestParam(name = "initData", required = false) String initData,
-            @RequestParam(name = "redirected", required = false) String redirected) throws Exception {
+            @RequestParam(name = "redirected", required = false) String redirected,
+            Model model) {
 
         if (initData == null) {
-            if ("true".equals(redirected)) {
-                return showAuthError();
-            }
-            return getInitPage();
+            return "true".equals(redirected) ? "auth-error" : "init-page";
         }
 
         if (!authService.validateInitData(initData)) {
-            System.err.println("Подпись неверна");
-            return showAuthError();
+            log.error("Invalid Telegram data signature");
+            return "auth-error";
         }
 
         TelegramUser user = authService.parseUserData(initData);
         if (user == null) {
-            System.err.println("Не удалось распарсить пользователя");
-            return getInitPage();
+            log.error("Failed to parse user data");
+            return "auth-error";
         }
 
-        System.out.println("Подпись верна");
-        System.out.println("Пользователь: " + user.getFirstName() + " " + user.getLastName());
+        LocalDateTime lastAuth = Instant.ofEpochMilli(user.getLastAuth().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
 
-        return ResponseEntity.ok(generateUserPage(user));
-    }
+        log.info("Authenticated user: {} {}", user.getFirstName(), user.getLastName());
 
-    private ResponseEntity<String> showAuthError() {
-        return ResponseEntity.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .body("""
-                <h1>Authentication Error</h1>
-                <p>Failed to verify Telegram data authenticity.</p>
-                <button onclick="window.Telegram.WebApp.close()">Close</button>
-            """);
-    }
+        model.addAttribute("userId", user.getId());
+        model.addAttribute("firstName", user.getFirstName());
+        model.addAttribute("lastName", user.getLastName());
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("photoUrl", user.getPhotoUrl());
+        model.addAttribute("isPremium", user.getIsPremium());
+        model.addAttribute("languageCode", user.getLanguageCode());
+        model.addAttribute("lastAuth", lastAuth); // LocalDateTime
 
-    private ResponseEntity<String> getInitPage() {
-        String html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <script src="https://telegram.org/js/telegram-web-app.js "></script>
-            <script>
-                window.onload = () => {
-                    if (Telegram?.WebApp) {
-                        Telegram.WebApp.ready();
-                        const params = new URLSearchParams({
-                            initData: Telegram.WebApp.initData || '',
-                            redirected: 'true'
-                        });
-                        window.location.href = '/?' + params.toString();
-                    }
-                };
-            </script>
-        </head>
-        <body>
-            <h1>Redirecting...</h1>
-        </body>
-        </html>
-    """;
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
-    }
-
-    private String generateUserPage(TelegramUser user) {
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>User Info</title>
-            <meta charset="UTF-8">
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .user-card { border: 1px solid #ddd; padding: 20px; max-width: 400px; margin: 0 auto; }
-            </style>
-        </head>
-        <body>
-            <div class="user-card">
-                <h2>User Information</h2>
-                <p><strong>ID:</strong> %d</p>
-                <p><strong>First Name:</strong> %s</p>
-                %s
-                %s
-                <p><strong>Auth Date:</strong> %s</p>
-            </div>
-        </body>
-        </html>
-        """.formatted(
-                user.getId(),
-                user.getFirstName(),
-                user.getLastName() != null ? "<p><strong>Last Name:</strong> " + user.getLastName() + "</p>" : "",
-                user.getUsername() != null ? "<p><strong>Username:</strong> @" + user.getUsername() + "</p>" : "",
-                user.getLastAuth()
-        );
+        return "user-profile";
     }
 }

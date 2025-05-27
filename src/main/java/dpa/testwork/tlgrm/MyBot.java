@@ -1,5 +1,8 @@
 package dpa.testwork.tlgrm;
 
+import dpa.testwork.tlgrm.config.BotConfig;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -11,13 +14,22 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.Collections;
 
+
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class MyBot extends TelegramLongPollingBot {
+    private final BotConfig botConfig;
 
-    private final String BOT_TOKEN = "";
-    private final String BOT_USERNAME = "";
+    @Override
+    public String getBotToken() {
+        return botConfig.getToken();
+    }
 
-    private static final String WEB_APP_URL = "";
+    @Override
+    public String getBotUsername() {
+        return botConfig.getUsername();
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -25,7 +37,7 @@ public class MyBot extends TelegramLongPollingBot {
             String chatId = update.getMessage().getChatId().toString();
 
             InlineKeyboardButton webAppButton = new InlineKeyboardButton("Open WebApp");
-            webAppButton.setWebApp(new WebAppInfo(WEB_APP_URL));
+            webAppButton.setWebApp(new WebAppInfo(botConfig.getWebAppUrl()));
 
             InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
             markup.setKeyboard(Collections.singletonList(Collections.singletonList(webAppButton)));
@@ -38,18 +50,10 @@ public class MyBot extends TelegramLongPollingBot {
             try {
                 execute(message);
             } catch (TelegramApiException e) {
-                e.printStackTrace();
+                log.error("Error sending message", e);
             }
         }
     }
-
-    @Override
-    public String getBotUsername() {
-        return BOT_USERNAME;
-    }
-
-    @Override
-    public String getBotToken() {
-        return BOT_TOKEN;
-    }
 }
+
+

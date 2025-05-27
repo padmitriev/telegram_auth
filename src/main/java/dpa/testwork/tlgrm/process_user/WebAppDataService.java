@@ -1,12 +1,15 @@
 package dpa.testwork.tlgrm.process_user;
 
+import dpa.testwork.tlgrm.db.service.TelegramUserService;
 import dpa.testwork.tlgrm.process_user.dto.TelegramUser;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -17,10 +20,13 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WebAppDataService {
 
     @Value("${telegram.bot.token}")
     private String botToken;
+
+    private final TelegramUserService telegramUserService;
     private static final String WEB_APP_DATA = "WebAppData";
     private static final Gson gson = new Gson();
 
@@ -46,20 +52,28 @@ public class WebAppDataService {
             byte[] secretKey = new HmacUtils("HmacSHA256", WEB_APP_DATA).hmac(botToken);
             String calculatedHash = new HmacUtils("HmacSHA256", secretKey).hmacHex(dataCheckString.toString());
 
-            System.out.println("Рассчитанный hash: " + calculatedHash);
-            System.out.println("Полученный hash:   " + receivedHash);
+            log.debug("Calculated hash: {}", calculatedHash);
+            log.debug("Received hash:   {}", receivedHash);
 
             boolean isValid = calculatedHash.equals(receivedHash);
             if (isValid) {
-                System.out.println("Хэши совпадают");
+                log.info("Hashes match. Signature is valid.");
             } else {
-                System.out.println("Хэши не совпадают");
+                log.warn("Hashes do not match. Signature is invalid.");
+            }
+
+            if (isValid) {
+                TelegramUser telegramUser = parseUserData(initData);
+                if (telegramUser != null) {
+                    telegramUser.setLastAuth(new Date());
+                    telegramUserService.saveOrUpdateUser(telegramUser);
+                }
             }
 
             return isValid;
 
         } catch (Exception e) {
-            System.out.println("Ошибка валидации: " + e.getMessage());
+            log.error("Error during initData validation", e);
             return false;
         }
     }
@@ -78,12 +92,12 @@ public class WebAppDataService {
         return parameters;
     }
 
-        public TelegramUser parseUserData(String initData) {
+    public TelegramUser parseUserData(String initData) {
         try {
             Map<String, String> params = parseInitData(initData);
             String userJson = params.get("user");
             if (userJson == null) {
-                System.out.println("Ошибка: отсутствует user в initData");
+                log.warn("User field is missing in initData");
                 return null;
             }
 
@@ -91,24 +105,27 @@ public class WebAppDataService {
             TelegramUser user = gson.fromJson(decoded, TelegramUser.class);
 
             if (user == null) {
-                System.out.println("Ошибка: не удалось распарсить user данные");
+                log.warn("Failed to parse user JSON data");
                 return null;
             }
 
-            System.out.println("\nДанные пользователя:");
-            System.out.println("ID: " + user.getId());
-            System.out.println("Имя: " + user.getFirstName());
-            System.out.println("Username: " + user.getUsername());
+            user.setLastAuth(new Date());
+
+            log.info("User recognized:");
+            log.info("ID: {}", user.getId());
+            log.info("First Name: {}", user.getFirstName());
+            log.info("Username: {}", user.getUsername());
+            log.info("Last Auth: {}", user.getLastAuth());
 
             return user;
 
         } catch (Exception e) {
-            System.out.println("Ошибка при парсинге user данных: " + e.getMessage());
+            log.error("Error parsing user data", e);
             return null;
         }
     }
 
-        private Map<String, String> parseInitData(String initData) {
+    private Map<String, String> parseInitData(String initData) {
         Map<String, String> result = new HashMap<>();
         for (String pair : initData.split("&")) {
             int idx = pair.indexOf('=');
